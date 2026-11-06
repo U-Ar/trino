@@ -15,6 +15,7 @@ package io.trino.plugin.hive.metastore.thrift;
 
 import com.google.common.net.HostAndPort;
 import com.google.inject.Inject;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.trino.plugin.hive.metastore.thrift.ThriftHiveMetastoreClient.TransportSupplier;
 import io.trino.spi.Node;
@@ -43,6 +44,7 @@ public class DefaultThriftMetastoreClientFactory
     private final Optional<HostAndPort> socksProxy;
     private final int connectTimeoutMillis;
     private final int readTimeoutMillis;
+    private final int maxFrameSize;
     private final HiveMetastoreAuthentication metastoreAuthentication;
     private final String hostname;
     private final Optional<String> catalogName;
@@ -59,6 +61,7 @@ public class DefaultThriftMetastoreClientFactory
             Optional<HostAndPort> socksProxy,
             Duration connectTimeout,
             Duration readTimeout,
+            DataSize maxFrameSize,
             HiveMetastoreAuthentication metastoreAuthentication,
             String hostname,
             Optional<String> catalogName)
@@ -67,6 +70,7 @@ public class DefaultThriftMetastoreClientFactory
         this.socksProxy = requireNonNull(socksProxy, "socksProxy is null");
         this.connectTimeoutMillis = toIntExact(connectTimeout.toMillis());
         this.readTimeoutMillis = toIntExact(readTimeout.toMillis());
+        this.maxFrameSize = toIntExact(maxFrameSize.toBytes());
         this.metastoreAuthentication = requireNonNull(metastoreAuthentication, "metastoreAuthentication is null");
         this.hostname = requireNonNull(hostname, "hostname is null");
         this.catalogName = requireNonNull(catalogName, "catalogName is null");
@@ -87,6 +91,7 @@ public class DefaultThriftMetastoreClientFactory
                 Optional.ofNullable(config.getSocksProxy()),
                 config.getConnectTimeout(),
                 config.getReadTimeout(),
+                config.getMaxFrameSize(),
                 metastoreAuthentication,
                 currentNode.getHost(),
                 config.getCatalogName());
@@ -124,7 +129,7 @@ public class DefaultThriftMetastoreClientFactory
     private TTransport createTransport(HostAndPort address, Optional<String> delegationToken)
             throws TTransportException
     {
-        return Transport.create(address, sslContext, socksProxy, connectTimeoutMillis, readTimeoutMillis, metastoreAuthentication, delegationToken);
+        return Transport.create(address, sslContext, socksProxy, connectTimeoutMillis, readTimeoutMillis, maxFrameSize, metastoreAuthentication, delegationToken);
     }
 
     private static Optional<SSLContext> buildSslContext(

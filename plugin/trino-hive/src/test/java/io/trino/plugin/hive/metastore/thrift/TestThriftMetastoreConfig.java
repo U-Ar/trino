@@ -15,8 +15,14 @@ package io.trino.plugin.hive.metastore.thrift;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.net.HostAndPort;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import io.airlift.units.MaxDataSize;
+import io.airlift.units.MinDataSize;
+import org.apache.thrift.TConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,6 +33,9 @@ import static io.airlift.configuration.testing.ConfigAssertions.assertDeprecated
 import static io.airlift.configuration.testing.ConfigAssertions.assertFullMapping;
 import static io.airlift.configuration.testing.ConfigAssertions.assertRecordedDefaults;
 import static io.airlift.configuration.testing.ConfigAssertions.recordDefaults;
+import static io.airlift.testing.ValidationAssertions.assertFailsValidation;
+import static io.airlift.testing.ValidationAssertions.assertValidates;
+import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -40,6 +49,7 @@ public class TestThriftMetastoreConfig
         assertRecordedDefaults(recordDefaults(ThriftMetastoreConfig.class)
                 .setConnectTimeout(new Duration(10, SECONDS))
                 .setReadTimeout(new Duration(10, SECONDS))
+                .setMaxFrameSize(DataSize.ofBytes(TConfiguration.DEFAULT_MAX_FRAME_SIZE))
                 .setSocksProxy(null)
                 .setMaxRetries(9)
                 .setBackoffScaleFactor(2.0)
@@ -72,6 +82,7 @@ public class TestThriftMetastoreConfig
         Map<String, String> properties = ImmutableMap.<String, String>builder()
                 .put("hive.metastore.thrift.client.connect-timeout", "22s")
                 .put("hive.metastore.thrift.client.read-timeout", "44s")
+                .put("hive.metastore.thrift.client.max-frame-size", "64MB")
                 .put("hive.metastore.thrift.client.socks-proxy", "localhost:1234")
                 .put("hive.metastore.thrift.client.max-retries", "15")
                 .put("hive.metastore.thrift.client.backoff-scale-factor", "3.0")
@@ -97,6 +108,7 @@ public class TestThriftMetastoreConfig
         ThriftMetastoreConfig expected = new ThriftMetastoreConfig()
                 .setConnectTimeout(new Duration(22, SECONDS))
                 .setReadTimeout(new Duration(44, SECONDS))
+                .setMaxFrameSize(DataSize.of(64, MEGABYTE))
                 .setSocksProxy(HostAndPort.fromParts("localhost", 1234))
                 .setMaxRetries(15)
                 .setBackoffScaleFactor(3.0)
@@ -119,6 +131,28 @@ public class TestThriftMetastoreConfig
                 .setCatalogName("custom_catalog_name");
 
         assertFullMapping(properties, expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {1, 104_857_600, Integer.MAX_VALUE})
+    public void testValidMaxFrameSize(long bytes)
+    {
+        assertValidates(new ThriftMetastoreConfig().setMaxFrameSize(DataSize.ofBytes(bytes)));
+    }
+
+    @Test
+    public void testInvalidMaxFrameSize()
+    {
+        assertFailsValidation(
+                new ThriftMetastoreConfig().setMaxFrameSize(DataSize.ofBytes(0)),
+                "maxFrameSize",
+                "must be greater than or equal to 1B",
+                MinDataSize.class);
+        assertFailsValidation(
+                new ThriftMetastoreConfig().setMaxFrameSize(DataSize.ofBytes(2_147_483_648L)),
+                "maxFrameSize",
+                "must be less than or equal to 2147483647B",
+                MaxDataSize.class);
     }
 
     @Test

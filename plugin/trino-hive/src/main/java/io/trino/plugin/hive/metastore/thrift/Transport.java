@@ -38,6 +38,7 @@ public final class Transport
             Optional<HostAndPort> socksProxy,
             int connectTimeoutMillis,
             int readTimeoutMillis,
+            int maxFrameSize,
             HiveMetastoreAuthentication authentication,
             Optional<String> delegationToken)
             throws TTransportException
@@ -45,6 +46,7 @@ public final class Transport
         requireNonNull(address, "address is null");
         try {
             TTransport rawTransport = createRaw(address, sslContext, socksProxy, connectTimeoutMillis, readTimeoutMillis);
+            rawTransport.getConfiguration().setMaxFrameSize(maxFrameSize);
             TTransport authenticatedTransport = authentication.authenticate(rawTransport, address.getHost(), delegationToken);
             if (!authenticatedTransport.isOpen()) {
                 authenticatedTransport.open();
