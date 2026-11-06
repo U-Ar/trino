@@ -20,11 +20,15 @@ import io.airlift.configuration.ConfigSecuritySensitive;
 import io.airlift.configuration.DefunctConfig;
 import io.airlift.configuration.LegacyConfig;
 import io.airlift.configuration.validation.FileExists;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import io.airlift.units.MaxDataSize;
+import io.airlift.units.MinDataSize;
 import io.airlift.units.MinDuration;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import org.apache.thrift.TConfiguration;
 
 import java.io.File;
 import java.util.Optional;
@@ -35,6 +39,7 @@ public class ThriftMetastoreConfig
 {
     private Duration connectTimeout = new Duration(10, TimeUnit.SECONDS);
     private Duration readTimeout = new Duration(10, TimeUnit.SECONDS);
+    private DataSize maxFrameSize = DataSize.ofBytes(TConfiguration.DEFAULT_MAX_FRAME_SIZE);
     private HostAndPort socksProxy;
     private int maxRetries = RetryDriver.DEFAULT_MAX_ATTEMPTS - 1;
     private double backoffScaleFactor = RetryDriver.DEFAULT_SCALE_FACTOR;
@@ -84,6 +89,22 @@ public class ThriftMetastoreConfig
     public ThriftMetastoreConfig setReadTimeout(Duration readTimeout)
     {
         this.readTimeout = readTimeout;
+        return this;
+    }
+
+    @NotNull
+    @MinDataSize("1B")
+    @MaxDataSize("2147483647B")
+    public DataSize getMaxFrameSize()
+    {
+        return maxFrameSize;
+    }
+
+    @Config("hive.metastore.thrift.client.max-frame-size")
+    @ConfigDescription("Maximum size of a Thrift frame received from the metastore")
+    public ThriftMetastoreConfig setMaxFrameSize(DataSize maxFrameSize)
+    {
+        this.maxFrameSize = maxFrameSize;
         return this;
     }
 

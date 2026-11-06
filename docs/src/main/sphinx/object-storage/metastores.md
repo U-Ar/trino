@@ -128,6 +128,12 @@ properties:
 * - `hive.metastore.thrift.client.read-timeout`
   - Socket read timeout for metastore client.
   - `10s`
+* - `hive.metastore.thrift.client.max-frame-size`
+  - Maximum size of a Thrift frame received from the metastore, including SASL
+    frames. Increase this limit to allow larger metastore responses. Valid values
+    range from `1B` to `2147483647B`. The separate Thrift message size limit is
+    `100MB`.
+  - `16384000B`
 * - `hive.metastore.thrift.impersonation.enabled`
   - Enable Hive metastore end user impersonation.
   -
